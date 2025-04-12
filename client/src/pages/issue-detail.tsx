@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -31,7 +31,6 @@ import { Navbar } from "@/components/navbar";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { SLAIndicator } from "@/components/ui/sla-indicator";
 import { Separator } from "@/components/ui/separator";
-import { Link } from "wouter";
 import { 
   Form, 
   FormControl, 
@@ -72,13 +71,24 @@ const commentSchema = z.object({
 type CommentFormValues = z.infer<typeof commentSchema>;
 
 export default function IssueDetail() {
+  // Define ALL hooks at the top level, before any conditional logic
   const [, params] = useRoute<{ id: string }>("/issues/:id");
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("details");
+  const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState<Department>(Department.IT);
+  
+  const form = useForm<CommentFormValues>({
+    resolver: zodResolver(commentSchema),
+    defaultValues: {
+      text: "",
+    },
+  });
   
   const issueId = params?.id ? parseInt(params.id) : 0;
 
+  // Data fetching queries
   const {
     data: issue,
     isLoading: issueLoading,
@@ -96,6 +106,14 @@ export default function IssueDetail() {
     enabled: !!issueId,
   });
 
+  // Update selectedDepartment based on issue data
+  useEffect(() => {
+    if (issue?.department) {
+      setSelectedDepartment(issue.department);
+    }
+  }, [issue?.department]);
+
+  // Mutations for issue actions
   const updateStatusMutation = useMutation({
     mutationFn: async (status: IssueStatus) => {
       const res = await apiRequest("PATCH", `/api/issues/${issueId}/status`, { status });
@@ -142,13 +160,6 @@ export default function IssueDetail() {
     },
   });
 
-  const form = useForm<CommentFormValues>({
-    resolver: zodResolver(commentSchema),
-    defaultValues: {
-      text: "",
-    },
-  });
-
   const addCommentMutation = useMutation({
     mutationFn: async (data: CommentFormValues) => {
       const res = await apiRequest("POST", `/api/issues/${issueId}/comments`, data);
@@ -171,7 +182,31 @@ export default function IssueDetail() {
       });
     },
   });
+  
+  const reassignDepartmentMutation = useMutation({
+    mutationFn: async (department: Department) => {
+      const res = await apiRequest("PATCH", `/api/issues/${issueId}/reassign-department`, { department });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/issues/${issueId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/issues/${issueId}/activities`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/issues/me"] });
+      toast({
+        title: "Department reassigned",
+        description: "The issue has been reassigned to a different department.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to reassign department",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
+  // Action handlers
   const onSubmitComment = (data: CommentFormValues) => {
     addCommentMutation.mutate(data);
   };
@@ -196,34 +231,11 @@ export default function IssueDetail() {
     escalateIssueMutation.mutate("Manual escalation by staff");
   };
   
-  // Admin functionality to reassign issue to a different department
-  const reassignDepartmentMutation = useMutation({
-    mutationFn: async (department: Department) => {
-      const res = await apiRequest("PATCH", `/api/issues/${issueId}/reassign-department`, { department });
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/issues/${issueId}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/issues/${issueId}/activities`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/issues/me"] });
-      toast({
-        title: "Department reassigned",
-        description: "The issue has been reassigned to a different department.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to reassign department",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
   const handleReassignDepartment = (department: Department) => {
     reassignDepartmentMutation.mutate(department);
   };
 
+  // Loading state
   if (issueLoading) {
     return (
       <div className="min-h-screen flex flex-col md:flex-row">
@@ -235,6 +247,7 @@ export default function IssueDetail() {
     );
   }
 
+  // Error state
   if (issueError || !issue) {
     return (
       <div className="min-h-screen flex flex-col md:flex-row">
@@ -256,6 +269,7 @@ export default function IssueDetail() {
     );
   }
 
+  // Compute permissions (these are not hooks, so they're safe after conditionals)
   const canMarkInProgress = (
     user?.role === UserRole.DEPARTMENT || 
     user?.role === UserRole.ADMIN
@@ -284,22 +298,12 @@ export default function IssueDetail() {
         // Check if more than 48 hours since creation
         (Date.now() - new Date(issue.createdAt).getTime()) / (1000 * 60 * 60) >= 48))
     );
-    
-  // Always define hooks at the top-level, regardless of conditions
-  const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
-  const [selectedDepartment, setSelectedDepartment] = useState<Department>(Department.IT);
   
-  // Update selectedDepartment when issue is loaded
-  useEffect(() => {
-    if (issue && issue.department) {
-      setSelectedDepartment(issue.department);
-    }
-  }, [issue]);
-  
-  // Admin-specific capabilities - computed values (not hooks)
+  // Admin-specific computed values
   const isAdmin = user?.role === UserRole.ADMIN;
-  const canReassignDepartment = isAdmin && issue && (issue.isEscalated || issue.slaStatus === SLAStatus.BREACHED || issue.slaStatus === SLAStatus.AT_RISK);
+  const canReassignDepartment = isAdmin && (issue.isEscalated || issue.slaStatus === SLAStatus.BREACHED || issue.slaStatus === SLAStatus.AT_RISK);
 
+  // Main render
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       <Sidebar />
