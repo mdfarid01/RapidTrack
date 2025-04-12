@@ -287,7 +287,14 @@ export default function IssueDetail() {
     
   // Always define hooks at the top-level, regardless of conditions
   const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
-  const [selectedDepartment, setSelectedDepartment] = useState<Department | "">(issue?.department || Department.IT);
+  const [selectedDepartment, setSelectedDepartment] = useState<Department | "">(Department.IT);
+  
+  // Update selectedDepartment when issue is loaded
+  useEffect(() => {
+    if (issue?.department) {
+      setSelectedDepartment(issue.department);
+    }
+  }, [issue?.department]);
   
   // Admin-specific capabilities - computed values (not hooks)
   const isAdmin = user?.role === UserRole.ADMIN;
