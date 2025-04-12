@@ -287,14 +287,14 @@ export default function IssueDetail() {
     
   // Always define hooks at the top-level, regardless of conditions
   const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
-  const [selectedDepartment, setSelectedDepartment] = useState<Department | "">(Department.IT);
+  const [selectedDepartment, setSelectedDepartment] = useState<Department>(Department.IT);
   
   // Update selectedDepartment when issue is loaded
   useEffect(() => {
-    if (issue?.department) {
+    if (issue && issue.department) {
       setSelectedDepartment(issue.department);
     }
-  }, [issue?.department]);
+  }, [issue]);
   
   // Admin-specific capabilities - computed values (not hooks)
   const isAdmin = user?.role === UserRole.ADMIN;
@@ -576,10 +576,10 @@ export default function IssueDetail() {
                             Cancel
                           </Button>
                           <Button
-                            disabled={selectedDepartment === issue.department || selectedDepartment === '' || reassignDepartmentMutation.isPending}
+                            disabled={selectedDepartment === issue.department || reassignDepartmentMutation.isPending}
                             onClick={() => {
-                              if (selectedDepartment && selectedDepartment !== issue.department) {
-                                handleReassignDepartment(selectedDepartment as Department);
+                              if (selectedDepartment !== issue.department) {
+                                handleReassignDepartment(selectedDepartment);
                                 setIsReassignDialogOpen(false);
                               }
                             }}
