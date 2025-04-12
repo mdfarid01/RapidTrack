@@ -285,11 +285,13 @@ export default function IssueDetail() {
         (Date.now() - new Date(issue.createdAt).getTime()) / (1000 * 60 * 60) >= 48))
     );
     
-  // Admin-specific capabilities
-  const isAdmin = user?.role === UserRole.ADMIN;
-  const canReassignDepartment = isAdmin && (issue.isEscalated || issue.slaStatus === SLAStatus.BREACHED || issue.slaStatus === SLAStatus.AT_RISK);
+  // Always define hooks at the top-level, regardless of conditions
   const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
-  const [selectedDepartment, setSelectedDepartment] = useState<Department | "">(issue.department);
+  const [selectedDepartment, setSelectedDepartment] = useState<Department | "">(issue?.department || Department.IT);
+  
+  // Admin-specific capabilities - computed values (not hooks)
+  const isAdmin = user?.role === UserRole.ADMIN;
+  const canReassignDepartment = isAdmin && issue && (issue.isEscalated || issue.slaStatus === SLAStatus.BREACHED || issue.slaStatus === SLAStatus.AT_RISK);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
