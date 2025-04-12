@@ -14,11 +14,15 @@ import {
   MessageSquare,
   AlertTriangle,
   Loader2,
-  History
+  History,
+  Users,
+  User,
+  RefreshCw,
+  ShieldAlert
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Issue, IssueStatus, UserRole, Activity, SLAStatus } from "@shared/schema";
+import { Issue, IssueStatus, UserRole, Activity, SLAStatus, Department } from "@shared/schema";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -223,13 +227,19 @@ export default function IssueDetail() {
     user.id === issue.reporterId && 
     issue.status === IssueStatus.COMPLETED;
 
-  const canEscalate = (
-    user?.role === UserRole.DEPARTMENT || 
-    user?.role === UserRole.ADMIN
-  ) && 
-  !issue.isEscalated && 
-  issue.status !== IssueStatus.VERIFIED && 
-  issue.status !== IssueStatus.CLOSED;
+  const canEscalate = !issue.isEscalated && 
+    issue.status !== IssueStatus.VERIFIED && 
+    issue.status !== IssueStatus.CLOSED && (
+      // Department staff and admins can always escalate
+      (user?.role === UserRole.DEPARTMENT || user?.role === UserRole.ADMIN) || 
+      // Employees can escalate if they reported it and one of the conditions is met:
+      (user?.role === UserRole.EMPLOYEE && 
+       user.id === issue.reporterId && 
+       (issue.slaStatus === SLAStatus.BREACHED || 
+        issue.status === IssueStatus.REJECTED ||
+        // Check if more than 48 hours since creation
+        (Date.now() - new Date(issue.createdAt).getTime()) / (1000 * 60 * 60) >= 48))
+    );
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">

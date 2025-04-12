@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertIssueSchema, insertActivitySchema, IssueStatus, UserRole, Department, SLAPriority } from "@shared/schema";
+import { insertIssueSchema, insertActivitySchema, IssueStatus, UserRole, Department, SLAPriority, SLAStatus } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
@@ -37,7 +37,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           issues = await storage.getIssuesByDepartment(user.department);
           break;
         case UserRole.ADMIN:
-          issues = await storage.getAllIssues();
+          // For admins, only show escalated issues or issues with breached SLA
+          const allIssues = await storage.getAllIssues();
+          issues = allIssues.filter(issue => 
+            issue.isEscalated || 
+            issue.slaStatus === SLAStatus.BREACHED || 
+            issue.slaStatus === SLAStatus.AT_RISK
+          );
           break;
         default:
           issues = [];
@@ -198,26 +204,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Escalate an issue
-  app.patch("/api/issues/:id/escalate", requireRole([UserRole.DEPARTMENT, UserRole.ADMIN]), async (req, res) => {
+  app.patch("/api/issues/:id/escalate", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Authentication required" });
+    
     try {
       const id = parseInt(req.params.id);
+      const user = req.user;
       
       const issue = await storage.getIssue(id);
       if (!issue) {
         return res.status(404).json({ message: "Issue not found" });
       }
       
-      // Department staff can only escalate issues in their department
-      if (req.user.role === UserRole.DEPARTMENT && issue.department !== req.user.department) {
-        return res.status(403).json({ message: "Access forbidden" });
-      }
+      // Check permissions based on role
+      if (user.role === UserRole.EMPLOYEE) {
+        // Employees can only escalate issues they reported
+        if (issue.reporterId !== user.id) {
+          return res.status(403).json({ message: "Access forbidden" });
+        }
+        
+        // Only allow escalation if not already escalated and past SLA
+        if (issue.isEscalated) {
+          return res.status(400).json({ message: "Issue is already escalated" });
+        }
+        
+        // Employee can only escalate if the issue meets one of these conditions:
+        // 1. SLA is breached
+        // 2. Status has been REJECTED
+        // 3. It's been more than 48 hours since creation
+        const createdAtDate = issue.createdAt ? new Date(issue.createdAt) : new Date();
+        const hoursSinceCreation = (Date.now() - createdAtDate.getTime()) / (1000 * 60 * 60);
+        
+        if (issue.slaStatus !== SLAStatus.BREACHED && 
+            issue.status !== IssueStatus.REJECTED && 
+            hoursSinceCreation < 48) {
+          return res.status(400).json({ 
+            message: "Can only escalate issues that are past SLA, rejected, or older than 48 hours" 
+          });
+        }
+      } else if (user.role === UserRole.DEPARTMENT) {
+        // Department staff can only escalate issues in their department
+        if (issue.department !== user.department) {
+          return res.status(403).json({ message: "Access forbidden" });
+        }
+      } 
+      // Admins can escalate any issue
       
       const updatedIssue = await storage.escalateIssue(id);
       
       // Create activity record
       await storage.createActivity({
         issueId: id,
-        userId: req.user.id,
+        userId: user.id,
         action: "escalated",
         details: { reason: req.body.reason || "Manual escalation" }
       });
