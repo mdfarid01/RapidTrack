@@ -88,14 +88,20 @@ export class MemStorage implements IStorage {
     });
     
     // Create some initial demo data
-    this.seedInitialData();
+    // Using an IIFE to execute async code in constructor
+    (async () => {
+      await this.seedInitialData();
+    })();
   }
 
-  private seedInitialData(): void {
+  private async seedInitialData(): Promise<void> {
+    // First hash the password
+    const hashedPassword = await this.hashPassword("password");
+    
     // Create admin user
     this.createUser({
       username: "admin",
-      password: "$2b$10$ZI0mZ4LdR5vnHvuKKvO9neVxGp.cLQb4.V4bM6taJZYyJ1SuSCBDm", // "password"
+      password: hashedPassword,
       fullName: "Admin User",
       email: "admin@example.com",
       role: UserRole.ADMIN,
@@ -105,7 +111,7 @@ export class MemStorage implements IStorage {
     // Create department staff
     this.createUser({
       username: "itstaff",
-      password: "$2b$10$ZI0mZ4LdR5vnHvuKKvO9neVxGp.cLQb4.V4bM6taJZYyJ1SuSCBDm", // "password"
+      password: hashedPassword,
       fullName: "IT Staff",
       email: "it@example.com",
       role: UserRole.DEPARTMENT,
@@ -115,12 +121,18 @@ export class MemStorage implements IStorage {
     // Create employee
     this.createUser({
       username: "employee",
-      password: "$2b$10$ZI0mZ4LdR5vnHvuKKvO9neVxGp.cLQb4.V4bM6taJZYyJ1SuSCBDm", // "password"
+      password: hashedPassword,
       fullName: "Regular Employee",
       email: "employee@example.com",
       role: UserRole.EMPLOYEE,
       department: Department.FINANCE
     });
+  }
+  
+  // Helper function to hash passwords
+  private async hashPassword(password: string): Promise<string> {
+    const bcrypt = await import('bcrypt');
+    return bcrypt.hash(password, 10);
   }
 
   // User methods
