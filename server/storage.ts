@@ -49,6 +49,7 @@ export interface IStorage {
   getIssuesByStatus(status: IssueStatus): Promise<Issue[]>;
   getIssuesByAssignee(assigneeId: number): Promise<Issue[]>;
   updateIssueStatus(id: number, status: IssueStatus): Promise<Issue | undefined>;
+  updateIssueDepartment(id: number, department: Department): Promise<Issue | undefined>;
   assignIssue(id: number, assigneeId: number): Promise<Issue | undefined>;
   escalateIssue(id: number): Promise<Issue | undefined>;
   addComment(issueId: number, userId: number, text: string): Promise<Issue | undefined>;
@@ -309,6 +310,26 @@ export class MemStorage implements IStorage {
       isEscalated: true,
       status: IssueStatus.ESCALATED,
       updatedAt: now
+    };
+    
+    this.issuesMap.set(id, updatedIssue);
+    return updatedIssue;
+  }
+  
+  async updateIssueDepartment(id: number, department: Department): Promise<Issue | undefined> {
+    const issue = await this.getIssue(id);
+    if (!issue) return undefined;
+    
+    const now = new Date();
+    const updatedIssue: Issue = {
+      ...issue,
+      department,
+      updatedAt: now,
+      // Reset assignee when changing department
+      assigneeId: null,
+      // If issue was escalated, it remains escalated but we keep the status to track it properly
+      // This allows the newly assigned department to see it immediately
+      status: issue.isEscalated ? IssueStatus.ESCALATED : issue.status 
     };
     
     this.issuesMap.set(id, updatedIssue);

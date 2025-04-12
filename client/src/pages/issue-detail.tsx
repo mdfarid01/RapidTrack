@@ -37,7 +37,8 @@ import {
   FormControl, 
   FormField, 
   FormItem, 
-  FormMessage 
+  FormMessage,
+  FormLabel
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { 
@@ -46,6 +47,21 @@ import {
   TabsList, 
   TabsTrigger 
 } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 
@@ -179,6 +195,34 @@ export default function IssueDetail() {
   const handleEscalate = () => {
     escalateIssueMutation.mutate("Manual escalation by staff");
   };
+  
+  // Admin functionality to reassign issue to a different department
+  const reassignDepartmentMutation = useMutation({
+    mutationFn: async (department: Department) => {
+      const res = await apiRequest("PATCH", `/api/issues/${issueId}/reassign-department`, { department });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/issues/${issueId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/issues/${issueId}/activities`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/issues/me"] });
+      toast({
+        title: "Department reassigned",
+        description: "The issue has been reassigned to a different department.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to reassign department",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleReassignDepartment = (department: Department) => {
+    reassignDepartmentMutation.mutate(department);
+  };
 
   if (issueLoading) {
     return (
@@ -240,6 +284,12 @@ export default function IssueDetail() {
         // Check if more than 48 hours since creation
         (Date.now() - new Date(issue.createdAt).getTime()) / (1000 * 60 * 60) >= 48))
     );
+    
+  // Admin-specific capabilities
+  const isAdmin = user?.role === UserRole.ADMIN;
+  const canReassignDepartment = isAdmin && (issue.isEscalated || issue.slaStatus === SLAStatus.BREACHED || issue.slaStatus === SLAStatus.AT_RISK);
+  const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState<Department | "">(issue.department);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -411,6 +461,7 @@ export default function IssueDetail() {
                 </TabsContent>
               </Tabs>
               <CardFooter className="flex flex-wrap gap-2 justify-end border-t p-4">
+                {/* Regular status update actions */}
                 {canMarkInProgress && (
                   <Button 
                     onClick={handleMarkInProgress}
@@ -451,6 +502,7 @@ export default function IssueDetail() {
                   </>
                 )}
 
+                {/* Escalation action */}
                 {canEscalate && (
                   <Button 
                     variant="destructive"
@@ -460,6 +512,81 @@ export default function IssueDetail() {
                     <AlertTriangle className="mr-2 h-4 w-4" />
                     Escalate
                   </Button>
+                )}
+
+                {/* Admin actions */}
+                {canReassignDepartment && (
+                  <>
+                    <Dialog open={isReassignDialogOpen} onOpenChange={setIsReassignDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline"
+                          className="ml-auto"
+                        >
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Reassign Department
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-2">
+                            <ShieldAlert className="h-5 w-5 text-destructive" />
+                            Reassign Issue to Another Department
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4">
+                          <p className="mb-4 text-sm text-gray-500">
+                            This issue {issue.isEscalated ? "has been escalated" : "is at risk of breaching SLA"} and needs attention. 
+                            Reassigning to another department may help resolve it faster.
+                          </p>
+                          <div className="space-y-3">
+                            <FormLabel>Select Department</FormLabel>
+                            <Select
+                              value={selectedDepartment}
+                              onValueChange={(value) => setSelectedDepartment(value as Department)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select department" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.values(Department).map((dept) => (
+                                  <SelectItem key={dept} value={dept} disabled={dept === issue.department}>
+                                    {dept}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <DialogFooter className="flex justify-between">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setIsReassignDialogOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            disabled={selectedDepartment === issue.department || selectedDepartment === '' || reassignDepartmentMutation.isPending}
+                            onClick={() => {
+                              if (selectedDepartment && selectedDepartment !== issue.department) {
+                                handleReassignDepartment(selectedDepartment as Department);
+                                setIsReassignDialogOpen(false);
+                              }
+                            }}
+                          >
+                            {reassignDepartmentMutation.isPending ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Reassigning...
+                              </>
+                            ) : (
+                              "Reassign Issue"
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </>
                 )}
               </CardFooter>
             </Card>

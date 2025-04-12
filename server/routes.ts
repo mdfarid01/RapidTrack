@@ -361,6 +361,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Reassign issue to another department (admin only)
+  app.patch("/api/issues/:id/reassign-department", requireRole([UserRole.ADMIN]), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { department } = req.body;
+      
+      if (!department || !Object.values(Department).includes(department)) {
+        return res.status(400).json({ message: "Valid department is required" });
+      }
+      
+      const issue = await storage.getIssue(id);
+      if (!issue) {
+        return res.status(404).json({ message: "Issue not found" });
+      }
+      
+      if (issue.department === department) {
+        return res.status(400).json({ message: "Issue is already assigned to this department" });
+      }
+      
+      // Update the issue's department
+      const updatedIssue = await storage.updateIssueDepartment(id, department);
+      
+      // Create activity record
+      await storage.createActivity({
+        issueId: id,
+        userId: req.user.id,
+        action: "department_changed",
+        details: { 
+          fromDepartment: issue.department,
+          toDepartment: department 
+        }
+      });
+      
+      res.json(updatedIssue);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reassign department" });
+    }
+  });
+  
   // Get analytics data
   app.get("/api/analytics", requireRole([UserRole.ADMIN, UserRole.DEPARTMENT]), async (req, res) => {
     try {
@@ -394,6 +433,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Update issue activity display 
+  app.get("/api/issues/:id/activities", async (req, res) => {
+    const activities = await storage.getActivitiesByIssue(parseInt(req.params.id));
+    const updatedActivities = activities.map(activity => {
+      if (activity.action === "department_changed") {
+        const details = activity.details as any;
+        activity.displayText = `reassigned from ${details.fromDepartment} to ${details.toDepartment} department`;
+      }
+      return activity;
+    });
+    
+    res.json(updatedActivities);
+  });
+
   // Create http server
   const httpServer = createServer(app);
   
