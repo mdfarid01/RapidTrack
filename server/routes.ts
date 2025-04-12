@@ -433,19 +433,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Update issue activity display 
-  app.get("/api/issues/:id/activities", async (req, res) => {
-    const activities = await storage.getActivitiesByIssue(parseInt(req.params.id));
-    const updatedActivities = activities.map(activity => {
-      if (activity.action === "department_changed") {
-        const details = activity.details as any;
-        activity.displayText = `reassigned from ${details.fromDepartment} to ${details.toDepartment} department`;
-      }
-      return activity;
-    });
-    
-    res.json(updatedActivities);
-  });
+  // Note: No need to add a separate endpoint for activities as we handle the display
+  // text directly in the frontend
 
   // Create http server
   const httpServer = createServer(app);

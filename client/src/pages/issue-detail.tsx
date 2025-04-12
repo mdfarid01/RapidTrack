@@ -442,6 +442,7 @@ export default function IssueDetail() {
                                 {activity.action === "assigned" && "assigned this issue"}
                                 {activity.action === "escalated" && "escalated this issue"}
                                 {activity.action === "commented" && "commented on this issue"}
+                                {activity.action === "department_changed" && `reassigned from ${(activity.details as any).fromDepartment} to ${(activity.details as any).toDepartment} department`}
                               </span>
                             </p>
                             <p className="text-xs text-gray-500">
