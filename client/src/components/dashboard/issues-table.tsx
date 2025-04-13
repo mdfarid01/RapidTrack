@@ -190,7 +190,7 @@ export function IssuesTable({ issues, onStatusChange, limit = 5 }: IssuesTablePr
                       />
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
-                      {format(new Date(issue.createdAt), "MMM d, h:mm a")}
+                      {issue.createdAt ? format(new Date(issue.createdAt), "MMM d, h:mm a") : "Unknown"}
                     </td>
                     <td className="px-4 py-3 text-sm text-right">
                       <DropdownMenu>
@@ -263,8 +263,12 @@ export function IssuesTable({ issues, onStatusChange, limit = 5 }: IssuesTablePr
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious 
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentPage((prev) => Math.max(prev - 1, 1));
+                    }}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                   />
                 </PaginationItem>
                 
@@ -298,8 +302,12 @@ export function IssuesTable({ issues, onStatusChange, limit = 5 }: IssuesTablePr
                 
                 <PaginationItem>
                   <PaginationNext 
-                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages || totalPages === 0}
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+                    }}
+                    className={(currentPage === totalPages || totalPages === 0) ? "pointer-events-none opacity-50" : ""}
                   />
                 </PaginationItem>
               </PaginationContent>

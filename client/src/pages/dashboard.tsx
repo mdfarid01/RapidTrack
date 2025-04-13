@@ -74,8 +74,34 @@ export default function Dashboard() {
     },
   });
 
+  const escalateIssueMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("PATCH", `/api/issues/${id}/escalate`, {});
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/issues/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities/recent"] });
+      toast({
+        title: "Issue escalated",
+        description: "The issue has been escalated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to escalate issue",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleStatusChange = (issueId: number, status: IssueStatus) => {
-    updateStatusMutation.mutate({ id: issueId, status });
+    if (status === IssueStatus.ESCALATED) {
+      escalateIssueMutation.mutate(issueId);
+    } else {
+      updateStatusMutation.mutate({ id: issueId, status });
+    }
   };
 
   const getGreeting = () => {
