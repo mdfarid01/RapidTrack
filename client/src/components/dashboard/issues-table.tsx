@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Issue, IssueStatus, Department } from "@shared/schema";
+import { Issue, IssueStatus, Department, UserRole } from "@shared/schema";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { SLAIndicator } from "@/components/ui/sla-indicator";
 import { format } from "date-fns";
@@ -28,6 +28,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { useAuth } from "@/hooks/use-auth";
 
 interface IssuesTableProps {
   issues: Issue[];
@@ -36,6 +37,7 @@ interface IssuesTableProps {
 }
 
 export function IssuesTable({ issues, onStatusChange, limit = 5 }: IssuesTableProps) {
+  const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -205,39 +207,88 @@ export function IssuesTable({ issues, onStatusChange, limit = 5 }: IssuesTablePr
                               <a className="w-full">View Details</a>
                             </Link>
                           </DropdownMenuItem>
-                          {onStatusChange && issue.status === IssueStatus.OPEN && (
-                            <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.IN_PROGRESS)}>
-                              Mark In Progress
-                            </DropdownMenuItem>
-                          )}
-                          {onStatusChange && issue.status === IssueStatus.IN_PROGRESS && (
-                            <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.COMPLETED)}>
-                              Mark Completed
-                            </DropdownMenuItem>
-                          )}
-                          {/* For department staff */}
-                          {onStatusChange && issue.status === IssueStatus.IN_PROGRESS && (
-                            <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.PENDING)}>
-                              Mark as Pending
-                            </DropdownMenuItem>
-                          )}
-                          {/* For employees - Verify options */}
-                          {onStatusChange && issue.status === IssueStatus.COMPLETED && (
+                          {/* DEPARTMENT STAFF OPTIONS */}
+                          {onStatusChange && user?.role === UserRole.DEPARTMENT && (
                             <>
-                              <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.VERIFIED)}>
-                                Verify Resolution
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.REJECTED)}>
-                                Reject Resolution
-                              </DropdownMenuItem>
+                              {issue.status === IssueStatus.OPEN && (
+                                <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.IN_PROGRESS)}>
+                                  Mark In Progress
+                                </DropdownMenuItem>
+                              )}
+                              {issue.status === IssueStatus.IN_PROGRESS && (
+                                <>
+                                  <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.PENDING)}>
+                                    Mark as Pending
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.COMPLETED)}>
+                                    Mark as Completed
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {issue.status === IssueStatus.PENDING && (
+                                <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.IN_PROGRESS)}>
+                                  Resume Work
+                                </DropdownMenuItem>
+                              )}
                             </>
                           )}
-                          {/* Escalation option for employees */}
-                          {onStatusChange && !issue.isEscalated && issue.status !== IssueStatus.VERIFIED && 
-                           issue.status !== IssueStatus.CLOSED && (
-                            <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.ESCALATED)}>
-                              Escalate Issue
-                            </DropdownMenuItem>
+
+                          {/* EMPLOYEE OPTIONS */}
+                          {onStatusChange && user?.role === UserRole.EMPLOYEE && (
+                            <>
+                              {/* Verification options for completed issues */}
+                              {issue.status === IssueStatus.COMPLETED && issue.reporterId === user.id && (
+                                <>
+                                  <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.VERIFIED)}>
+                                    Verify Resolution
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.REJECTED)}>
+                                    Reject Resolution
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              
+                              {/* Escalation option */}
+                              {!issue.isEscalated && 
+                               issue.status !== IssueStatus.VERIFIED && 
+                               issue.status !== IssueStatus.CLOSED && 
+                               issue.reporterId === user.id && (
+                                <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.ESCALATED)}>
+                                  Escalate Issue
+                                </DropdownMenuItem>
+                              )}
+                            </>
+                          )}
+                          
+                          {/* ADMIN OPTIONS */}
+                          {onStatusChange && user?.role === UserRole.ADMIN && (
+                            <>
+                              {issue.status === IssueStatus.OPEN && (
+                                <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.IN_PROGRESS)}>
+                                  Mark In Progress
+                                </DropdownMenuItem>
+                              )}
+                              {issue.status === IssueStatus.IN_PROGRESS && (
+                                <>
+                                  <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.PENDING)}>
+                                    Mark as Pending
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.COMPLETED)}>
+                                    Mark as Completed
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {issue.status === IssueStatus.PENDING && (
+                                <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.IN_PROGRESS)}>
+                                  Resume Work
+                                </DropdownMenuItem>
+                              )}
+                              {!issue.isEscalated && issue.status !== IssueStatus.VERIFIED && issue.status !== IssueStatus.CLOSED && (
+                                <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.ESCALATED)}>
+                                  Escalate Issue
+                                </DropdownMenuItem>
+                              )}
+                            </>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
