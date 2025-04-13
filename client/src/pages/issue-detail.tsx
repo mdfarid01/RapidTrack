@@ -265,10 +265,12 @@ export default function IssueDetail() {
   };
   
   const handleTakeDepartmentAction = (reason: string) => {
-    takeDepartmentActionMutation.mutate({ 
-      department: issue.department, 
-      reason 
-    });
+    if (issue) {
+      takeDepartmentActionMutation.mutate({ 
+        department: issue.department, 
+        reason 
+      });
+    }
   };
 
   // Loading state
@@ -336,7 +338,7 @@ export default function IssueDetail() {
        (issue.slaStatus === SLAStatus.BREACHED || 
         issue.status === IssueStatus.REJECTED ||
         // Check if more than 48 hours since creation
-        (Date.now() - new Date(issue.createdAt).getTime()) / (1000 * 60 * 60) >= 48))
+        (issue.createdAt && (Date.now() - new Date(issue.createdAt).getTime()) / (1000 * 60 * 60) >= 48)))
     );
   
   // Admin-specific computed values
@@ -378,7 +380,7 @@ export default function IssueDetail() {
                   </span>
                   <span className="flex items-center gap-1 text-gray-500">
                     <Clock className="h-4 w-4" />
-                    Created: {format(new Date(issue.createdAt), "MMM d, yyyy h:mm a")}
+                    Created: {issue.createdAt ? format(new Date(issue.createdAt), "MMM d, yyyy h:mm a") : "Unknown"}
                   </span>
                   <SLAIndicator status={issue.slaStatus} dueDate={issue.dueBy} />
                 </CardDescription>
@@ -419,7 +421,7 @@ export default function IssueDetail() {
                                   {comment.userName}
                                 </span>
                                 <span className="text-xs text-gray-500">
-                                  {format(new Date(comment.timestamp), "MMM d, h:mm a")}
+                                  {comment.timestamp ? format(new Date(comment.timestamp), "MMM d, h:mm a") : "Unknown"}
                                 </span>
                               </div>
                               <p className="text-sm">{comment.text}</p>
@@ -500,7 +502,7 @@ export default function IssueDetail() {
                               </span>
                             </p>
                             <p className="text-xs text-gray-500">
-                              {format(new Date(activity.createdAt), "MMM d, yyyy h:mm a")}
+                              {activity.createdAt ? format(new Date(activity.createdAt), "MMM d, yyyy h:mm a") : "Unknown"}
                             </p>
                           </div>
                         </div>

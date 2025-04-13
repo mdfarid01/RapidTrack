@@ -33,7 +33,7 @@ export default function Dashboard() {
     isLoading: issuesLoading,
     error: issuesError,
   } = useQuery<Issue[]>({
-    queryKey: [user?.role === "admin" ? "/api/issues/admin" : "/api/issues/me"],
+    queryKey: ["/api/issues/me"],
   });
 
   const {
