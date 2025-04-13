@@ -25,12 +25,15 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // For employees, fetch issues they reported
+  // For department staff, fetch issues assigned to their department
+  // For admins, only fetch escalated issues or issues with SLA issues
   const {
     data: issues,
     isLoading: issuesLoading,
     error: issuesError,
   } = useQuery<Issue[]>({
-    queryKey: ["/api/issues/me"],
+    queryKey: [user?.role === "admin" ? "/api/issues/admin" : "/api/issues/me"],
   });
 
   const {
