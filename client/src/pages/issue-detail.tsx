@@ -342,6 +342,7 @@ export default function IssueDetail() {
   // Admin-specific computed values
   const isAdmin = user?.role === UserRole.ADMIN;
   const canReassignDepartment = isAdmin && (issue.isEscalated || issue.slaStatus === SLAStatus.BREACHED || issue.slaStatus === SLAStatus.AT_RISK);
+  const canTakeDepartmentAction = isAdmin && issue.slaStatus === SLAStatus.BREACHED;
 
   // Main render
   return (
@@ -651,6 +652,27 @@ export default function IssueDetail() {
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
+                  </>
+                )}
+                
+                {/* Department Action dialog for admins */}
+                {canTakeDepartmentAction && (
+                  <>
+                    <Button 
+                      variant="destructive"
+                      onClick={() => setIsDepartmentActionDialogOpen(true)}
+                    >
+                      <ShieldAlert className="mr-2 h-4 w-4" />
+                      Take Action on Department
+                    </Button>
+                    
+                    <DepartmentActionDialog
+                      department={issue.department}
+                      isOpen={isDepartmentActionDialogOpen}
+                      onOpenChange={setIsDepartmentActionDialogOpen}
+                      onSubmit={handleTakeDepartmentAction}
+                      isSubmitting={takeDepartmentActionMutation.isPending}
+                    />
                   </>
                 )}
               </CardFooter>
