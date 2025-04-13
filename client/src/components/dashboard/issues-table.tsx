@@ -215,6 +215,30 @@ export function IssuesTable({ issues, onStatusChange, limit = 5 }: IssuesTablePr
                               Mark Completed
                             </DropdownMenuItem>
                           )}
+                          {/* For department staff */}
+                          {onStatusChange && issue.status === IssueStatus.IN_PROGRESS && (
+                            <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.PENDING)}>
+                              Mark as Pending
+                            </DropdownMenuItem>
+                          )}
+                          {/* For employees - Verify options */}
+                          {onStatusChange && issue.status === IssueStatus.COMPLETED && (
+                            <>
+                              <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.VERIFIED)}>
+                                Verify Resolution
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.REJECTED)}>
+                                Reject Resolution
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {/* Escalation option for employees */}
+                          {onStatusChange && !issue.isEscalated && issue.status !== IssueStatus.VERIFIED && 
+                           issue.status !== IssueStatus.CLOSED && (
+                            <DropdownMenuItem onClick={() => onStatusChange(issue.id, IssueStatus.ESCALATED)}>
+                              Escalate Issue
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
