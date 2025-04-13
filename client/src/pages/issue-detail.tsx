@@ -214,6 +214,10 @@ export default function IssueDetail() {
   const handleMarkInProgress = () => {
     updateStatusMutation.mutate(IssueStatus.IN_PROGRESS);
   };
+  
+  const handleMarkPending = () => {
+    updateStatusMutation.mutate(IssueStatus.PENDING);
+  };
 
   const handleMarkCompleted = () => {
     updateStatusMutation.mutate(IssueStatus.COMPLETED);
@@ -274,23 +278,27 @@ export default function IssueDetail() {
     user?.role === UserRole.DEPARTMENT || 
     user?.role === UserRole.ADMIN
   ) && issue.status === IssueStatus.OPEN;
+  
+  const canMarkPending = (
+    user?.role === UserRole.DEPARTMENT || 
+    user?.role === UserRole.ADMIN
+  ) && issue.status === IssueStatus.IN_PROGRESS;
 
   const canMarkCompleted = (
     user?.role === UserRole.DEPARTMENT || 
     user?.role === UserRole.ADMIN
-  ) && issue.status === IssueStatus.IN_PROGRESS;
+  ) && (issue.status === IssueStatus.IN_PROGRESS || issue.status === IssueStatus.PENDING);
 
   const canVerifyOrReject = 
     user?.role === UserRole.EMPLOYEE && 
     user.id === issue.reporterId && 
     issue.status === IssueStatus.COMPLETED;
 
+  // Only employees can escalate issues, not department staff
   const canEscalate = !issue.isEscalated && 
     issue.status !== IssueStatus.VERIFIED && 
     issue.status !== IssueStatus.CLOSED && (
-      // Department staff and admins can always escalate
-      (user?.role === UserRole.DEPARTMENT || user?.role === UserRole.ADMIN) || 
-      // Employees can escalate if they reported it and one of the conditions is met:
+      // Only employees can escalate if they reported it and one of the conditions is met:
       (user?.role === UserRole.EMPLOYEE && 
        user.id === issue.reporterId && 
        (issue.slaStatus === SLAStatus.BREACHED || 

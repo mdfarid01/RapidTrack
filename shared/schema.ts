@@ -13,6 +13,7 @@ export enum UserRole {
 export enum IssueStatus {
   OPEN = "open",
   IN_PROGRESS = "in_progress",
+  PENDING = "pending",
   COMPLETED = "completed",
   VERIFIED = "verified",
   REJECTED = "rejected",
