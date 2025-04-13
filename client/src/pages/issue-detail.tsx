@@ -309,18 +309,21 @@ export default function IssueDetail() {
 
   // Compute permissions (these are not hooks, so they're safe after conditionals)
   const canMarkInProgress = (
-    user?.role === UserRole.DEPARTMENT || 
+    (user?.role === UserRole.DEPARTMENT && 
+      user.department === issue.department) || 
     user?.role === UserRole.ADMIN
   ) && issue.status === IssueStatus.OPEN;
   
   // Department staff can mark an issue as pending when it's in progress
   const canMarkPending = (
-    user?.role === UserRole.DEPARTMENT || 
+    (user?.role === UserRole.DEPARTMENT && 
+      user.department === issue.department) || 
     user?.role === UserRole.ADMIN
   ) && issue.status === IssueStatus.IN_PROGRESS;
 
   const canMarkCompleted = (
-    user?.role === UserRole.DEPARTMENT || 
+    (user?.role === UserRole.DEPARTMENT && 
+      user.department === issue.department) || 
     user?.role === UserRole.ADMIN
   ) && (issue.status === IssueStatus.IN_PROGRESS || issue.status === IssueStatus.PENDING);
 
@@ -344,7 +347,10 @@ export default function IssueDetail() {
   
   // Admin-specific computed values
   const isAdmin = user?.role === UserRole.ADMIN;
+  // Admin should always be able to reassign department when issue is escalated
   const canReassignDepartment = isAdmin && (issue.isEscalated || issue.slaStatus === SLAStatus.BREACHED || issue.slaStatus === SLAStatus.AT_RISK);
+  // Make a separate permission flag for escalated issues - admins should ALWAYS see this option when issues are escalated
+  const canReassignEscalatedIssue = isAdmin && issue.isEscalated;
   const canTakeDepartmentAction = isAdmin && issue.slaStatus === SLAStatus.BREACHED;
 
   // Main render

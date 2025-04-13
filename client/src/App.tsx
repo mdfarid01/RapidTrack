@@ -10,6 +10,8 @@ import AuthPage from "@/pages/auth-page";
 import SubmitIssue from "@/pages/submit-issue";
 import IssueDetail from "@/pages/issue-detail";
 import Analytics from "@/pages/analytics";
+import Profile from "@/pages/profile";
+import Settings from "@/pages/settings";
 import { UserRole } from "@shared/schema";
 
 function Router() {
@@ -21,6 +23,8 @@ function Router() {
       <ProtectedRoute path="/issues/me" component={Dashboard} />
       <ProtectedRoute path="/issues/new" component={SubmitIssue} />
       <ProtectedRoute path="/issues/:id" component={IssueDetail} />
+      <ProtectedRoute path="/profile" component={Profile} />
+      <ProtectedRoute path="/settings" component={Settings} />
       <ProtectedRoute 
         path="/admin/analytics" 
         component={Analytics} 
