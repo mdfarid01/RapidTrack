@@ -313,6 +313,7 @@ export default function IssueDetail() {
     user?.role === UserRole.ADMIN
   ) && issue.status === IssueStatus.OPEN;
   
+  // Department staff can mark an issue as pending when it's in progress
   const canMarkPending = (
     user?.role === UserRole.DEPARTMENT || 
     user?.role === UserRole.ADMIN
@@ -391,7 +392,7 @@ export default function IssueDetail() {
                   <TabsList className="mt-4 w-full justify-start">
                     <TabsTrigger value="details">Details</TabsTrigger>
                     <TabsTrigger value="comments">
-                      Comments {issue.comments?.length 
+                      Comments {Array.isArray(issue.comments) && issue.comments.length > 0
                         ? `(${issue.comments.length})` 
                         : ""
                       }
@@ -407,9 +408,9 @@ export default function IssueDetail() {
                 </TabsContent>
 
                 <TabsContent value="comments" className="p-6 pt-4">
-                  {issue.comments && issue.comments.length > 0 ? (
+                  {Array.isArray(issue.comments) && issue.comments.length > 0 ? (
                     <div className="space-y-4 mb-6">
-                      {issue.comments.map((comment) => (
+                      {issue.comments.map((comment: any) => (
                         <div key={comment.id} className="flex gap-3">
                           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                             {comment.userName.charAt(0).toUpperCase()}
