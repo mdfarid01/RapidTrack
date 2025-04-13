@@ -23,6 +23,7 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Issue, IssueStatus, UserRole, Activity, SLAStatus, Department } from "@shared/schema";
+import { DepartmentActionDialog } from "@/components/ui/department-action-dialog";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,6 +78,7 @@ export default function IssueDetail() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("details");
   const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
+  const [isDepartmentActionDialogOpen, setIsDepartmentActionDialogOpen] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<Department>(Department.IT);
   
   const form = useForm<CommentFormValues>({
@@ -205,6 +207,29 @@ export default function IssueDetail() {
       });
     },
   });
+  
+  const takeDepartmentActionMutation = useMutation({
+    mutationFn: async (payload: { department: Department, reason: string }) => {
+      const res = await apiRequest("POST", `/api/admin/department-action`, payload);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/issues/${issueId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/admin/issues`] });
+      setIsDepartmentActionDialogOpen(false);
+      toast({
+        title: "Action taken",
+        description: "The department has been notified of the issue.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to take action",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   // Action handlers
   const onSubmitComment = (data: CommentFormValues) => {
@@ -237,6 +262,13 @@ export default function IssueDetail() {
   
   const handleReassignDepartment = (department: Department) => {
     reassignDepartmentMutation.mutate(department);
+  };
+  
+  const handleTakeDepartmentAction = (reason: string) => {
+    takeDepartmentActionMutation.mutate({ 
+      department: issue.department, 
+      reason 
+    });
   };
 
   // Loading state
@@ -491,6 +523,17 @@ export default function IssueDetail() {
                   >
                     <Clock className="mr-2 h-4 w-4" />
                     Mark In Progress
+                  </Button>
+                )}
+                
+                {canMarkPending && (
+                  <Button 
+                    variant="outline"
+                    onClick={handleMarkPending}
+                    disabled={updateStatusMutation.isPending}
+                  >
+                    <Clock className="mr-2 h-4 w-4" />
+                    Mark as Pending
                   </Button>
                 )}
                 
