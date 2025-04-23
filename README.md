@@ -1,4 +1,4 @@
-# IssuePulse - Internal Issue Tracking System
+# Rapid Track - Internal Issue Tracking System
 
 A role-based internal issue tracking system designed for efficient team collaboration and service level agreement (SLA) management, with robust administrative controls and detailed issue lifecycle management.
 
